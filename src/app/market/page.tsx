@@ -89,7 +89,7 @@ export default function MarketPage() {
           <div className="text-sm text-gray-500 mb-4">
             <p>請檢查：</p>
             <ul className="list-disc list-inside mt-2">
-              <li>後端服務是否運行在 http://192.168.168.169:8080</li>
+              <li>後端服務是否運行在 http://localhost:8080</li>
               <li>API 端點是否正常響應</li>
               <li>網絡連接是否正常</li>
             </ul>

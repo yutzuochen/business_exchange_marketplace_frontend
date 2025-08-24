@@ -1,7 +1,9 @@
 import { Listing } from '@/types/listing';
 
-// 臨時硬編碼 API URL 用於調試
-const API_BASE_URL = 'https://business-exchange-backend-430730011391.us-central1.run.app';
+// API URL - automatically switches between local and production
+const API_BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+  ? 'http://localhost:8080' 
+  : 'https://business-exchange-backend-430730011391.us-central1.run.app';
 
 export class ApiClient {
   private baseUrl: string;
