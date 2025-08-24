@@ -40,11 +40,11 @@ export default function ListingCard({ listing }: ListingCardProps) {
           {/* 狀態標籤 */}
           <div className="absolute top-2 right-2">
             <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-              listing.status === 'active' 
+              listing.status === '活躍' 
                 ? 'bg-green-100 text-green-800' 
                 : 'bg-gray-100 text-gray-800'
             }`}>
-              {listing.status === 'active' ? '活躍' : '非活躍'}
+              {listing.status}
             </span>
           </div>
         </div>
