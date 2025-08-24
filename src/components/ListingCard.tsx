@@ -10,10 +10,24 @@ interface ListingCardProps {
 
 export default function ListingCard({ listing }: ListingCardProps) {
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('zh-TW', {
       style: 'currency',
-      currency: 'USD',
-    }).format(price / 100); // 假設價格以分為單位存儲
+      currency: 'TWD',
+    }).format(price);
+  };
+
+  const formatPriceRange = (low: number, high: number) => {
+    const lowFormatted = new Intl.NumberFormat('zh-TW', {
+      style: 'currency',
+      currency: 'TWD',
+      maximumFractionDigits: 0,
+    }).format(low);
+    const highFormatted = new Intl.NumberFormat('zh-TW', {
+      style: 'currency',
+      currency: 'TWD', 
+      maximumFractionDigits: 0,
+    }).format(high);
+    return `${lowFormatted} - ${highFormatted}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -59,9 +73,12 @@ export default function ListingCard({ listing }: ListingCardProps) {
             {listing.description}
           </p>
 
-          {/* 價格 */}
+          {/* 價格範圍 */}
           <div className="text-2xl font-bold text-red-600 mb-3">
-            {formatPrice(listing.price)}
+            {listing.price_range ? 
+              formatPriceRange(listing.price_range.low, listing.price_range.high) :
+              formatPrice(listing.price)
+            }
           </div>
 
           {/* 基本信息 */}

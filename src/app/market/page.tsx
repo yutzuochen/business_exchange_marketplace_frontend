@@ -12,6 +12,13 @@ export default function MarketPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    total_pages: 0
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -22,33 +29,43 @@ export default function MarketPage() {
       try {
         console.log('📡 Calling API...');
         
-        // 使用 Promise.allSettled 確保即使部分失敗也能繼續
-        const [listingsResult, categoriesResult] = await Promise.allSettled([
-          apiClient.getListings(),
-          apiClient.getCategories(),
+        // Direct API call test first
+        console.log('🧪 Testing direct fetch...');
+        const testResponse = await fetch('http://127.0.0.1:8080/api/v1/listings?limit=5');
+        console.log('🧪 Test response status:', testResponse.status);
+        
+        if (!testResponse.ok) {
+          throw new Error(`API responded with status ${testResponse.status}`);
+        }
+        
+        const testData = await testResponse.json();
+        console.log('🧪 Test data received:', testData.listings?.length || 0, 'listings');
+        
+        // If test successful, get full data
+        const [listingsResponse, categoriesResponse] = await Promise.all([
+          fetch('http://127.0.0.1:8080/api/v1/listings'),
+          fetch('http://127.0.0.1:8080/api/v1/categories')
         ]);
         
-        console.log('📊 Results:', { listingsResult, categoriesResult });
+        console.log('📊 Response status:', {
+          listings: listingsResponse.status,
+          categories: categoriesResponse.status
+        });
         
-        // 處理 listings 結果
-        if (listingsResult.status === 'fulfilled') {
-          setListings(listingsResult.value || []);
-          console.log('✅ Listings loaded:', listingsResult.value?.length || 0);
+        if (listingsResponse.ok) {
+          const listingsData = await listingsResponse.json();
+          setListings(listingsData.listings || []);
+          console.log('✅ Listings loaded:', listingsData.listings?.length || 0);
         } else {
-          console.error('❌ Listings failed:', listingsResult.reason);
+          console.error('❌ Listings failed with status:', listingsResponse.status);
         }
         
-        // 處理 categories 結果
-        if (categoriesResult.status === 'fulfilled') {
-          setCategories(categoriesResult.value || []);
-          console.log('✅ Categories loaded:', categoriesResult.value?.length || 0);
+        if (categoriesResponse.ok) {
+          const categoriesData = await categoriesResponse.json();
+          setCategories(categoriesData.categories || []);
+          console.log('✅ Categories loaded:', categoriesData.categories?.length || 0);
         } else {
-          console.error('❌ Categories failed:', categoriesResult.reason);
-        }
-        
-        // 如果兩個都失敗了才設置錯誤
-        if (listingsResult.status === 'rejected' && categoriesResult.status === 'rejected') {
-          setError('無法載入數據');
+          console.error('❌ Categories failed with status:', categoriesResponse.status);
         }
         
       } catch (err) {
@@ -63,11 +80,10 @@ export default function MarketPage() {
     // 添加延遲確保組件完全掛載
     const timer = setTimeout(fetchData, 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [currentPage, selectedCategory]);
 
-  const filteredListings = selectedCategory === 'all' 
-    ? listings 
-    : listings.filter(listing => listing.category === selectedCategory);
+  // Server-side filtering is now handled by the API
+  const filteredListings = listings;
 
   if (loading) {
     return (
@@ -133,7 +149,10 @@ export default function MarketPage() {
         <div className="mb-8">
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setSelectedCategory('all')}
+              onClick={() => {
+                setSelectedCategory('all');
+                setCurrentPage(1);
+              }}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 selectedCategory === 'all'
                   ? 'bg-blue-600 text-white'
@@ -145,7 +164,10 @@ export default function MarketPage() {
             {Array.isArray(categories) && categories.map((category) => (
               <button
                 key={category}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => {
+                  setSelectedCategory(category);
+                  setCurrentPage(1);
+                }}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   selectedCategory === category
                     ? 'bg-blue-600 text-white'
@@ -161,18 +183,74 @@ export default function MarketPage() {
         {/* 結果統計 */}
         <div className="mb-6">
           <p className="text-gray-600">
-            顯示 {filteredListings.length} 個結果
+            顯示第 {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} 個結果，共 {pagination.total} 個
             {selectedCategory !== 'all' && ` (${selectedCategory} 分類)`}
           </p>
         </div>
 
         {/* Listings 網格 */}
         {filteredListings.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredListings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredListings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+            
+            {/* 分頁控制 */}
+            {pagination.total_pages > 1 && (
+              <div className="mt-12 flex justify-center">
+                <div className="flex items-center space-x-2">
+                  {/* 上一頁 */}
+                  <button
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                      currentPage === 1
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    上一頁
+                  </button>
+                  
+                  {/* 頁碼 */}
+                  {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                    const startPage = Math.max(1, currentPage - 2);
+                    const pageNum = startPage + i;
+                    if (pageNum > pagination.total_pages) return null;
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                          currentPage === pageNum
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  
+                  {/* 下一頁 */}
+                  <button
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === pagination.total_pages}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                      currentPage === pagination.total_pages
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    下一頁
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12">
             <div className="text-gray-400 text-6xl mb-4">📭</div>

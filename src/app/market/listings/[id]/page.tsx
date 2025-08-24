@@ -33,10 +33,24 @@ export default function ListingDetailPage() {
   }, [id]);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('zh-TW', {
       style: 'currency',
-      currency: 'USD',
-    }).format(price / 100);
+      currency: 'TWD',
+    }).format(price);
+  };
+
+  const formatPriceRange = (low: number, high: number) => {
+    const lowFormatted = new Intl.NumberFormat('zh-TW', {
+      style: 'currency',
+      currency: 'TWD',
+      maximumFractionDigits: 0,
+    }).format(low);
+    const highFormatted = new Intl.NumberFormat('zh-TW', {
+      style: 'currency',
+      currency: 'TWD', 
+      maximumFractionDigits: 0,
+    }).format(high);
+    return `${lowFormatted} - ${highFormatted}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -149,9 +163,12 @@ export default function ListingDetailPage() {
               <h2 className="text-xl font-semibold mb-4 text-gray-900">基本信息</h2>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-700 font-medium">價格：</span>
+                  <span className="text-gray-700 font-medium">價格範圍：</span>
                   <span className="font-semibold text-2xl text-green-600">
-                    {formatPrice(listing.price)}
+                    {listing.price_range ? 
+                      formatPriceRange(listing.price_range.low, listing.price_range.high) :
+                      formatPrice(listing.price)
+                    }
                   </span>
                 </div>
                 <div className="flex justify-between">

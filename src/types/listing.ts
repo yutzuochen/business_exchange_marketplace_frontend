@@ -1,3 +1,8 @@
+export interface PriceRange {
+  low: number;
+  high: number;
+}
+
 export interface Listing {
   id: number;
   title: string;
@@ -26,6 +31,7 @@ export interface Listing {
   owner?: User;
   images?: Image[];
   favorites?: Favorite[];
+  price_range?: PriceRange;
 }
 
 export interface User {

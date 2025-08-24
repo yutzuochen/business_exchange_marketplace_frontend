@@ -1,78 +1,60 @@
 'use client';
 
-import { useState } from 'react';
-import { apiClient } from '@/lib/api';
+import { useState, useEffect } from 'react';
 
 export default function TestPage() {
-  const [testResult, setTestResult] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const testAPI = async () => {
-    setLoading(true);
-    setTestResult('測試中...');
-    
-    try {
-      // 測試 listings API
-      const listingsData = await apiClient.getListings();
-      console.log('Listings API 成功:', listingsData);
-      
-      // 測試 categories API
-      const categoriesData = await apiClient.getCategories();
-      console.log('Categories API 成功:', categoriesData);
-      
-      setTestResult(`✅ API 測試成功！
-      
-Listings: ${listingsData.length} 個
-Categories: ${categoriesData.length} 個
+  useEffect(() => {
+    const testAPI = async () => {
+      try {
+        console.log('🧪 Testing API connection...');
+        const response = await fetch('http://localhost:8080/api/v1/listings?limit=3');
+        console.log('🧪 Response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('🧪 API Result:', result);
+        setData(result);
+      } catch (err) {
+        console.error('🧪 API Error:', err);
+        setError(err instanceof Error ? err.message : 'API call failed');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-詳細信息請查看瀏覽器控制台。`);
-    } catch (error) {
-      console.error('API 測試失敗:', error);
-      setTestResult(`❌ API 測試失敗: ${error instanceof Error ? error.message : '未知錯誤'}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+    testAPI();
+  }, []);
+
+  if (loading) {
+    return <div className="p-8">Loading test...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <h1 className="text-xl font-bold text-red-600">API Test Failed</h1>
+        <p className="text-red-500">Error: {error}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 頁面標題 */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-center space-x-4">
-            <h1 className="text-6xl font-bold text-orange-500 drop-shadow-lg">567</h1>
-            <span className="text-2xl font-bold text-orange-500">我來接</span>
-          </div>
-          <p className="mt-4 text-center text-lg font-semibold text-gray-800">企業互惠平台</p>
+    <div className="p-8">
+      <h1 className="text-xl font-bold text-green-600">API Test Success!</h1>
+      <p className="text-gray-600">Found {data?.listings?.length || 0} listings</p>
+      {data?.listings?.map((listing: any, index: number) => (
+        <div key={index} className="mt-2 p-2 border">
+          <h3 className="font-semibold">{listing.title}</h3>
+          <p className="text-sm text-gray-500">{listing.location}</p>
         </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 py-16">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">
-            API 連接測試
-          </h2>
-          <p className="text-lg text-gray-600 mb-8">
-            測試前端與後端 API 的連接狀態
-          </p>
-
-          <button
-            onClick={testAPI}
-            disabled={loading}
-            className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? '測試中...' : '開始測試'}
-          </button>
-
-          {testResult && (
-            <div className="mt-8 p-6 bg-white rounded-lg shadow-md">
-              <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
-                {testResult}
-              </pre>
-            </div>
-          )}
-        </div>
-      </div>
+      ))}
     </div>
   );
 }

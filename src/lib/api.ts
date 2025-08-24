@@ -1,8 +1,8 @@
 import { Listing } from '@/types/listing';
 
 // API URL - automatically switches between local and production
-const API_BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-  ? 'http://localhost:8080' 
+const API_BASE_URL = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://127.0.0.1:8080' 
   : 'https://business-exchange-backend-430730011391.us-central1.run.app';
 
 export class ApiClient {
