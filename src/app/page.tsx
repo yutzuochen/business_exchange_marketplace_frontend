@@ -1,18 +1,10 @@
 import Link from 'next/link';
+import Navigation from '@/components/Navigation';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 頁面標題 */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-center space-x-4">
-            <h1 className="text-9xl font-bold text-orange-500 drop-shadow-lg">567</h1>
-            <span className="text-2xl font-bold text-orange-500">我來接</span>
-          </div>
-          <p className="mt-4 text-center text-2xl font-semibold text-gray-800">企業互惠平台</p>
-        </div>
-      </div>
+      <Navigation />
 
       <main className="max-w-6xl mx-auto px-4 py-16">
         <div className="text-center">
@@ -26,14 +18,8 @@ export default function Home() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
-              href="/market"
-              className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              瀏覽市場
-            </Link>
-            <Link 
               href="/dashboard"
-              className="bg-gray-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-700 transition-colors"
+              className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors"
             >
               管理後台
             </Link>

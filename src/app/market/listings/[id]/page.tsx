@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Listing } from '@/types/listing';
 import { apiClient } from '@/lib/api';
+import Navigation from '@/components/Navigation';
 import Link from 'next/link';
 
 export default function ListingDetailPage() {
@@ -97,6 +98,8 @@ export default function ListingDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      
       {/* 頁面標題 */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-6">
@@ -105,18 +108,12 @@ export default function ListingDetailPage() {
               <h1 className="text-3xl font-bold text-gray-900">{listing.title}</h1>
               <p className="mt-2 text-gray-600">商品詳情</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <h2 className="text-4xl font-bold text-orange-500 drop-shadow-lg">567</h2>
-                <span className="text-xl font-bold text-orange-500">我來接</span>
-              </div>
-              <Link 
-                href="/market"
-                className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-              >
-                返回市場
-              </Link>
-            </div>
+            <Link 
+              href="/market"
+              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+            >
+              返回市場
+            </Link>
           </div>
         </div>
       </div>

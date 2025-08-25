@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Listing } from '@/types/listing';
 import { apiClient } from '@/lib/api';
 import ListingCard from '@/components/ListingCard';
+import Navigation from '@/components/Navigation';
 import Link from 'next/link';
 
 export default function MarketPage() {
@@ -133,26 +134,7 @@ export default function MarketPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 頁面標題 */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-6xl font-bold text-orange-500 drop-shadow-lg">567</h1>
-              <span className="text-2xl font-bold text-orange-500">我來接</span>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-semibold text-gray-800">企業互惠平台</p>
-            </div>
-            <Link 
-              href="/"
-              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-            >
-              返回首頁
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Navigation />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* 分類篩選 */}
