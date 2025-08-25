@@ -7,14 +7,23 @@ WORKDIR /app
 # Install dependencies
 RUN apk add --no-cache libc6-compat
 
-# Copy package files
-COPY package*.json ./
+# Create user to avoid permission issues
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Install dependencies
+# Copy package files and install dependencies as root first
+COPY package*.json ./
 RUN npm ci
 
-# Copy source code
-COPY . .
+# Change ownership of node_modules to nextjs user
+RUN chown -R nextjs:nodejs /app/node_modules
+RUN chown -R nextjs:nodejs /app
+
+# Switch to nextjs user
+USER nextjs
+
+# Copy source code (this will be overridden by volume mount in development)
+COPY --chown=nextjs:nodejs . .
 
 # Expose port
 EXPOSE 3000
