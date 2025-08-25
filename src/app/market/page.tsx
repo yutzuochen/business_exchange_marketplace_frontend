@@ -12,6 +12,7 @@ export default function MarketPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCounty, setSelectedCounty] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -41,31 +42,40 @@ export default function MarketPage() {
         const testData = await testResponse.json();
         console.log('🧪 Test data received:', testData.listings?.length || 0, 'listings');
         
-        // If test successful, get full data
-        const [listingsResponse, categoriesResponse] = await Promise.all([
-          fetch('http://127.0.0.1:8080/api/v1/listings'),
-          fetch('http://127.0.0.1:8080/api/v1/categories')
+        // Use API client with parameters
+        const [listingsResult, categoriesResult] = await Promise.allSettled([
+          apiClient.getListings({
+            page: currentPage,
+            limit: 20,
+            category: selectedCategory !== 'all' ? selectedCategory : undefined,
+            location: selectedCounty !== 'all' ? selectedCounty : undefined
+          }),
+          apiClient.getCategories(),
         ]);
         
-        console.log('📊 Response status:', {
-          listings: listingsResponse.status,
-          categories: categoriesResponse.status
-        });
+        console.log('📊 Results:', { listingsResult, categoriesResult });
         
-        if (listingsResponse.ok) {
-          const listingsData = await listingsResponse.json();
-          setListings(listingsData.listings || []);
-          console.log('✅ Listings loaded:', listingsData.listings?.length || 0);
+        // 處理 listings 結果
+        if (listingsResult.status === 'fulfilled') {
+          setListings(listingsResult.value.listings || []);
+          setPagination(listingsResult.value.pagination);
+          console.log('✅ Listings loaded:', listingsResult.value.listings?.length || 0);
+          console.log('📄 Pagination:', listingsResult.value.pagination);
         } else {
-          console.error('❌ Listings failed with status:', listingsResponse.status);
+          console.error('❌ Listings failed:', listingsResult.reason);
         }
         
-        if (categoriesResponse.ok) {
-          const categoriesData = await categoriesResponse.json();
-          setCategories(categoriesData.categories || []);
-          console.log('✅ Categories loaded:', categoriesData.categories?.length || 0);
+        // 處理 categories 結果
+        if (categoriesResult.status === 'fulfilled') {
+          setCategories(categoriesResult.value || []);
+          console.log('✅ Categories loaded:', categoriesResult.value?.length || 0);
         } else {
-          console.error('❌ Categories failed with status:', categoriesResponse.status);
+          console.error('❌ Categories failed:', categoriesResult.reason);
+        }
+        
+        // 如果兩個都失敗了才設置錯誤
+        if (listingsResult.status === 'rejected' && categoriesResult.status === 'rejected') {
+          setError('無法載入數據');
         }
         
       } catch (err) {
@@ -80,7 +90,7 @@ export default function MarketPage() {
     // 添加延遲確保組件完全掛載
     const timer = setTimeout(fetchData, 100);
     return () => clearTimeout(timer);
-  }, [currentPage, selectedCategory]);
+  }, [currentPage, selectedCategory, selectedCounty]);
 
   // Server-side filtering is now handled by the API
   const filteredListings = listings;
@@ -146,7 +156,8 @@ export default function MarketPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* 分類篩選 */}
-        <div className="mb-8">
+        <div className="mb-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-3">分類篩選</h3>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => {
@@ -180,11 +191,48 @@ export default function MarketPage() {
           </div>
         </div>
 
+        {/* 縣市篩選 */}
+        <div className="mb-8">
+          <h3 className="text-lg font-medium text-gray-900 mb-3">縣市篩選</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                setSelectedCounty('all');
+                setCurrentPage(1);
+              }}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                selectedCounty === 'all'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              全部縣市
+            </button>
+            {['台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市', '基隆市', '新竹市', '嘉義市', '新竹縣', '苗栗縣', '彰化縣', '南投縣', '雲林縣', '嘉義縣', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', '金門縣', '連江縣'].map((county) => (
+              <button
+                key={county}
+                onClick={() => {
+                  setSelectedCounty(county);
+                  setCurrentPage(1);
+                }}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedCounty === county
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {county}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* 結果統計 */}
         <div className="mb-6">
           <p className="text-gray-600">
             顯示第 {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} 個結果，共 {pagination.total} 個
             {selectedCategory !== 'all' && ` (${selectedCategory} 分類)`}
+            {selectedCounty !== 'all' && ` (${selectedCounty})`}
           </p>
         </div>
 

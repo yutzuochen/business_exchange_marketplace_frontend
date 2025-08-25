@@ -48,7 +48,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">智能搜索</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">智慧搜索</h3>
             <p className="text-gray-600">快速找到符合你需求的商業機會</p>
           </div>
 

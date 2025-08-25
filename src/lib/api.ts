@@ -30,9 +30,42 @@ export class ApiClient {
   }
 
   // 獲取所有 listings
-  async getListings(): Promise<Listing[]> {
-    const response = await this.request<{listings: Listing[]}>('/api/v1/listings');
-    return response.listings || [];
+  async getListings(params?: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    location?: string;
+  }): Promise<{
+    listings: Listing[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      total_pages: number;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.location) queryParams.append('location', params.location);
+    
+    const url = `/api/v1/listings${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await this.request<{
+      listings: Listing[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        total_pages: number;
+      };
+    }>(url);
+    
+    return {
+      listings: response.listings || [],
+      pagination: response.pagination
+    };
   }
 
   // 獲取單個 listing

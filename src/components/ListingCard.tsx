@@ -81,7 +81,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
             }
           </div>
 
-          {/* 基本信息 */}
+          {/* 物件資訊 */}
           <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
             <span>{listing.category}</span>
             <span>{listing.condition}</span>

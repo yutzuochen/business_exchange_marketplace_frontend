@@ -158,9 +158,9 @@ export default function ListingDetailPage() {
 
           {/* 側邊欄 */}
           <div className="lg:col-span-1">
-            {/* 價格和基本信息 */}
+            {/* 價格和物件資訊 */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-900">基本信息</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-900">物件資訊</h2>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-700 font-medium">價格範圍：</span>
@@ -273,10 +273,10 @@ export default function ListingDetailPage() {
               </div>
             </div>
 
-            {/* 賣家信息 */}
+            {/* 賣家資訊 */}
             {listing.owner && (
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4 text-gray-900">賣家信息</h2>
+                <h2 className="text-xl font-semibold mb-4 text-gray-900">賣家資訊</h2>
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-700 font-medium">用戶名：</span>
