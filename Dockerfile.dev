@@ -1,37 +1,27 @@
-# Development Dockerfile for Next.js frontend
-FROM node:18-alpine
+# syntax=docker/dockerfile:1.7
 
-# Set working directory
+# Dev stage（命名為 dev，之後就算你想保留 target 也沒問題）
+FROM node:20-alpine AS dev
 WORKDIR /app
 
-# Install dependencies
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat curl
 
-# Create user to avoid permission issues
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+ENV NODE_ENV=development \
+    NEXT_TELEMETRY_DISABLED=1 \
+    CHOKIDAR_USEPOLLING=1 \
+    WATCHPACK_POLLING=true
 
-# Copy package files and install dependencies as root first
+# 先安裝依賴以吃快取
 COPY package*.json ./
 RUN npm ci
 
-# Change ownership of node_modules to nextjs user
-RUN chown -R nextjs:nodejs /app/node_modules
-RUN chown -R nextjs:nodejs /app
+# 程式碼（dev 時會被 bind mount 蓋掉，仍保留可單獨啟動能力）
+COPY . .
 
-# Switch to nextjs user
-USER nextjs
+# 首次啟動若 node_modules volume 是空的，幫你自動 npm ci
+COPY docker/entrypoint.dev.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Copy source code (this will be overridden by volume mount in development)
-COPY --chown=nextjs:nodejs . .
-
-# Expose port
 EXPOSE 3000
-
-# Set environment variables for development
-ENV NODE_ENV=development
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_PUBLIC_API_URL=http://localhost:8080
-
-# Start development server
+ENTRYPOINT ["entrypoint.sh"]
 CMD ["npm", "run", "dev"]

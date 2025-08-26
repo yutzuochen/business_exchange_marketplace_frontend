@@ -1,61 +1,29 @@
-# 使用官方 Node.js 18 作為基礎鏡像
-FROM node:18-alpine AS base
+# syntax=docker/dockerfile:1.7
 
-# 安裝依賴
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+# Development image for Next.js — 快速、穩定 Hot Reload、避免 chown node_modules
+FROM node:20-alpine AS dev
 WORKDIR /app
 
-# 複製 package.json 和 package-lock.json
-COPY package.json package-lock.json* ./
+# 健康檢查與部分套件會用到
+RUN apk add --no-cache libc6-compat curl
+
+ENV NODE_ENV=development \
+    NEXT_TELEMETRY_DISABLED=1 \
+    CHOKIDAR_USEPOLLING=1 \
+    WATCHPACK_POLLING=true
+
+# 先安裝依賴以利用建置快取（注意：執行時 node_modules 會掛 volume，
+# 因此我們還會在 entrypoint 再檢查一次並自動 npm ci）
+COPY package*.json ./
 RUN npm ci
 
-# 構建應用
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# 程式碼（開發時會被 bind mount 覆蓋，但保留可單獨啟動能力）
 COPY . .
 
-# 設置環境變量
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
-
-# 設置 API URL 環境變量用於構建
-ARG NEXT_PUBLIC_API_URL=https://business-exchange-backend-430730011391.us-central1.run.app
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
-# 構建應用
-RUN npm run build
-
-# 生產環境
-FROM base AS runner
-WORKDIR /app
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# 設置運行時環境變數
-ENV NEXT_PUBLIC_API_URL=https://business-exchange-backend-430730011391.us-central1.run.app
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# 複製構建產物
-COPY --from=builder /app/public ./public
-
-# 設置正確的權限
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
-# 複製構建產物
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
+# 入口腳本：若 volume 為空，首次啟動時自動 npm ci
+COPY docker/entrypoint.dev.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 3000
-
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-CMD ["node", "server.js"]
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["npm", "run", "dev"]
