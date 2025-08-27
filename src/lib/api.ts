@@ -1,9 +1,19 @@
 import { Listing } from '@/types/listing';
+import getConfig from 'next/config';
 
-// API URL - automatically switches between local and production
-const API_BASE_URL = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? 'http://127.0.0.1:8080' 
-  : 'https://business-exchange-backend-430730011391.us-central1.run.app';
+// 獲取運行時配置
+const { publicRuntimeConfig } = getConfig() || {};
+
+// API URL - use runtime config or environment variable or fallback
+// For production, this will be replaced at build time
+const API_BASE_URL = publicRuntimeConfig?.apiUrl || process.env.NEXT_PUBLIC_API_URL || 'https://business-exchange-backend-430730011391.us-central1.run.app';
+
+// Debug logging (will be removed in production)
+if (typeof window !== 'undefined') {
+  console.log('🔧 API_BASE_URL:', API_BASE_URL);
+  console.log('🔧 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+  console.log('🔧 publicRuntimeConfig.apiUrl:', publicRuntimeConfig?.apiUrl);
+}
 
 export class ApiClient {
   private baseUrl: string;

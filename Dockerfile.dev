@@ -13,12 +13,13 @@ ENV NODE_ENV=development \
 
 # 先安裝依賴以吃快取
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --only=production=false
 
 # 程式碼（dev 時會被 bind mount 蓋掉，仍保留可單獨啟動能力）
 COPY . .
 
 # 首次啟動若 node_modules volume 是空的，幫你自動 npm ci
+# 使用絕對路徑，因為構建上下文是 business_exchange_marketplace_frontend
 COPY docker/entrypoint.dev.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

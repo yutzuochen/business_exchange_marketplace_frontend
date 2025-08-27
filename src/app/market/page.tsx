@@ -31,17 +31,8 @@ export default function MarketPage() {
       try {
         console.log('📡 Calling API...');
         
-        // Direct API call test first
-        console.log('🧪 Testing direct fetch...');
-        const testResponse = await fetch('http://127.0.0.1:8080/api/v1/listings?limit=5');
-        console.log('🧪 Test response status:', testResponse.status);
-        
-        if (!testResponse.ok) {
-          throw new Error(`API responded with status ${testResponse.status}`);
-        }
-        
-        const testData = await testResponse.json();
-        console.log('🧪 Test data received:', testData.listings?.length || 0, 'listings');
+        // Log API configuration for debugging
+        console.log('🔧 API Base URL:', process.env.NEXT_PUBLIC_API_URL || 'fallback URL');
         
         // Use API client with parameters
         const [listingsResult, categoriesResult] = await Promise.allSettled([
