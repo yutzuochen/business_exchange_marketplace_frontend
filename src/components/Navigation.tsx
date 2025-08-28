@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
+import { apiClient } from '@/lib/api';
 
 export default function Navigation() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -9,21 +10,56 @@ export default function Navigation() {
 
   // Check login status on component mount
   useEffect(() => {
-    // Check if user just came from successful login
-    const loginSuccess = sessionStorage.getItem('loginSuccess');
-    const userName = sessionStorage.getItem('userName');
-    const userAvatar = sessionStorage.getItem('userAvatar');
-    
-    if (loginSuccess) {
-      setIsLoggedIn(true);
-      setUser({ 
-        name: userName || 'User', 
-        avatar: userAvatar || '' 
-      });
-      // Don't remove loginSuccess here - keep it for persistence
-    }
+    // 使用API客户端检查认证状态
+    const checkAuthStatus = () => {
+      const authToken = localStorage.getItem('authToken');
+      const loginSuccess = sessionStorage.getItem('loginSuccess');
+      const userName = sessionStorage.getItem('userName');
+      const userAvatar = sessionStorage.getItem('userAvatar');
+      
+      if (authToken && (loginSuccess || userName)) {
+        setIsLoggedIn(true);
+        setUser({ 
+          name: userName || 'User', 
+          avatar: userAvatar || '' 
+        });
+      } else if (authToken) {
+        // 如果有token但没有用户信息，尝试解析token
+        try {
+          const tokenParts = authToken.split('.');
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            if (payload.email) {
+              const username = payload.email.split('@')[0];
+              sessionStorage.setItem('userEmail', payload.email);
+              sessionStorage.setItem('userName', username);
+              setIsLoggedIn(true);
+              setUser({ 
+                name: username, 
+                avatar: '' 
+              });
+            }
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse JWT token:', parseError);
+          // 如果token解析失败，清除无效token
+          apiClient.clearAuthToken();
+        }
+      }
+    };
+
+    checkAuthStatus();
   }, []);
   
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUser({ name: 'User', avatar: '' });
+    // 使用API客户端清除认证数据
+    apiClient.clearAuthToken();
+    // 跳转到首页
+    window.location.href = '/';
+  };
+
   return (
     <div className="bg-white border-b shadow-sm">
       <div className="max-w-7xl mx-auto px-4 py-4">
@@ -88,16 +124,7 @@ export default function Navigation() {
                 
                 {/* Logout button */}
                 <button 
-                  onClick={() => {
-                    setIsLoggedIn(false);
-                    setUser({ name: 'User', avatar: '' });
-                    // Clear all session data
-                    sessionStorage.removeItem('loginSuccess');
-                    sessionStorage.removeItem('userName');
-                    sessionStorage.removeItem('userAvatar');
-                    // Optionally redirect to home page
-                    window.location.href = '/';
-                  }}
+                  onClick={handleLogout}
                   className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors font-medium"
                 >
                   登出

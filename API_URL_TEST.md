@@ -54,3 +54,5 @@ https://business-exchange-frontend-430730011391.us-central1.run.app/market
 1. 清除瀏覽器快取
 2. 強制刷新頁面 (Ctrl+F5)
 3. 檢查瀏覽器開發者工具的控制台和網絡選項卡
+
+

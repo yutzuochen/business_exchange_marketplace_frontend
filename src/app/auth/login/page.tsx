@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
+import { apiClient } from '@/lib/api';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -26,31 +27,46 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // TODO: Implement actual login API call
-      console.log('Login attempt:', formData);
+      // 使用API客户端进行登录
+      const response = await apiClient.login(formData.email, formData.password);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Show success screen
-      setShowSuccess(true);
-      
-      // Set login success flag and user info for Navigation component
-      sessionStorage.setItem('loginSuccess', 'true');
-      // Extract username from email (before @ symbol) or use email if no @
-      const username = formData.email.includes('@') 
-        ? formData.email.split('@')[0] 
-        : formData.email;
-      sessionStorage.setItem('userName', username);
-      sessionStorage.setItem('userAvatar', ''); // No avatar for now
-      
-      // Redirect after 2 seconds
-      setTimeout(() => {
-        window.location.href = '/market';
-      }, 2000);
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      if (response.data?.token) {
+        // 解析JWT token获取用户信息
+        try {
+          const tokenParts = response.data.token.split('.');
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            if (payload.email) {
+              sessionStorage.setItem('userEmail', payload.email);
+              sessionStorage.setItem('userName', payload.email.split('@')[0]);
+            }
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse JWT token:', parseError);
+        }
+        
+        // 设置登录成功标志
+        sessionStorage.setItem('loginSuccess', 'true');
+        sessionStorage.setItem('userAvatar', ''); // No avatar for now
+        
+        // 显示成功页面
+        setShowSuccess(true);
+        
+        // 2秒后跳转到市场页面
+        setTimeout(() => {
+          window.location.href = '/market';
+        }, 2000);
+      } else {
+        throw new Error('登录响应格式错误');
+      }
       
     } catch (err) {
-      setError('登入失敗，請檢查您的帳號和密碼');
+      console.error('Login error:', err);
+      setError(err instanceof Error ? err.message : '登入失敗，請檢查您的帳號和密碼');
     } finally {
       setIsLoading(false);
     }

@@ -39,3 +39,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+API_URL_TEST.md
+FRONTEND_CONNECTION_FIX.md

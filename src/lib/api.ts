@@ -1,120 +1,213 @@
-import { Listing } from '@/types/listing';
-import getConfig from 'next/config';
+// API客户端，用于处理所有API调用和JWT token管理
 
-// 獲取運行時配置
-const { publicRuntimeConfig } = getConfig() || {};
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-// API URL - use runtime config or environment variable or fallback
-// For production, this will be replaced at build time
-const API_BASE_URL = publicRuntimeConfig?.apiUrl || process.env.NEXT_PUBLIC_API_URL || 'https://business-exchange-backend-430730011391.us-central1.run.app';
-
-// Debug logging (will be removed in production)
-if (typeof window !== 'undefined') {
-  console.log('🔧 API_BASE_URL:', API_BASE_URL);
-  console.log('🔧 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
-  console.log('🔧 publicRuntimeConfig.apiUrl:', publicRuntimeConfig?.apiUrl);
+export interface ApiResponse<T = any> {
+  data?: T;
+  error?: string;
+  message?: string;
 }
 
-export class ApiClient {
-  private baseUrl: string;
+class ApiClient {
+  private baseURL: string;
 
-  constructor(baseUrl: string = API_BASE_URL) {
-    this.baseUrl = baseUrl;
+  constructor(baseURL: string) {
+    this.baseURL = baseURL;
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    });
+  // 获取认证token
+  private getAuthToken(): string | null {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('authToken');
+    }
+    return null;
+  }
 
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+  // 设置认证token
+  setAuthToken(token: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', token);
+    }
+  }
+
+  // 清除认证token
+  clearAuthToken(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('loginSuccess');
+      sessionStorage.removeItem('userName');
+      sessionStorage.removeItem('userEmail');
+      sessionStorage.removeItem('userAvatar');
+    }
+  }
+
+  // 通用请求方法
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
+    const url = `${this.baseURL}${endpoint}`;
+    const token = this.getAuthToken();
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    // 如果有token，添加到Authorization header
+    if (token) {
+      (headers as any)['Authorization'] = `Bearer ${token}`;
     }
 
-    return response.json();
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      // 如果返回401，清除token并跳转到登录页
+      if (response.status === 401) {
+        this.clearAuthToken();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/login';
+        }
+        return { error: '认证失败，请重新登录' };
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: data.error || `请求失败: ${response.status}` };
+      }
+
+      return { data };
+    } catch (error) {
+      console.error('API request failed:', error);
+      return { error: '网络请求失败' };
+    }
   }
 
-  // 獲取所有 listings
-  async getListings(params?: {
-    page?: number;
-    limit?: number;
-    category?: string;
-    location?: string;
-  }): Promise<{
-    listings: Listing[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      total_pages: number;
-    };
-  }> {
-    const queryParams = new URLSearchParams();
-    
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.category) queryParams.append('category', params.category);
-    if (params?.location) queryParams.append('location', params.location);
-    
-    const url = `/api/v1/listings${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    const response = await this.request<{
-      listings: Listing[];
-      pagination: {
-        page: number;
-        limit: number;
-        total: number;
-        total_pages: number;
-      };
-    }>(url);
-    
-    return {
-      listings: response.listings || [],
-      pagination: response.pagination
-    };
-  }
-
-  // 獲取單個 listing
-  async getListing(id: number): Promise<Listing> {
-    const response = await this.request<{listing: Listing}>('/api/v1/listings/' + id);
-    return response.listing;
-  }
-
-  // 獲取 categories
-  async getCategories(): Promise<string[]> {
-    const response = await this.request<{categories: string[]}>('/api/v1/categories');
-    return response.categories || [];
-  }
-
-  // 創建 listing
-  async createListing(data: Partial<Listing>): Promise<Listing> {
-    const response = await this.request<{listing: Listing}>('/api/v1/listings', {
+  // 登录
+  async login(email: string, password: string): Promise<ApiResponse<{ token: string }>> {
+    const response = await this.request<{ token: string }>('/api/v1/auth/login', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ email, password }),
     });
-    return response.listing;
+
+    if (response.data?.token) {
+      this.setAuthToken(response.data.token);
+    }
+
+    return response;
   }
 
-  // 更新 listing
-  async updateListing(id: number, data: Partial<Listing>): Promise<Listing> {
-    const response = await this.request<{listing: Listing}>(`/api/v1/listings/${id}`, {
+  // 注册
+  async register(email: string, password: string): Promise<ApiResponse<{ token: string }>> {
+    const response = await this.request<{ token: string }>('/api/v1/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (response.data?.token) {
+      this.setAuthToken(response.data.token);
+    }
+
+    return response;
+  }
+
+  // 获取用户资料
+  async getUserProfile(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/user/profile');
+  }
+
+  // 获取商品列表
+  async getListings(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/v1/listings');
+  }
+
+  // 获取商品详情
+  async getListing(id: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/listings/${id}`);
+  }
+
+  // 创建商品
+  async createListing(listingData: any): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/listings', {
+      method: 'POST',
+      body: JSON.stringify(listingData),
+    });
+  }
+
+  // 更新商品
+  async updateListing(id: string, listingData: any): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/listings/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(listingData),
     });
-    return response.listing;
   }
 
-  // 刪除 listing
-  async deleteListing(id: number): Promise<void> {
-    return this.request<void>(`/api/v1/listings/${id}`, {
+  // 删除商品
+  async deleteListing(id: string): Promise<ApiResponse<void>> {
+    return this.request(`/api/v1/listings/${id}`, {
       method: 'DELETE',
     });
   }
+
+  // 获取收藏列表
+  async getFavorites(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/v1/favorites');
+  }
+
+  // 添加收藏
+  async addFavorite(listingId: string): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/favorites', {
+      method: 'POST',
+      body: JSON.stringify({ listing_id: listingId }),
+    });
+  }
+
+  // 移除收藏
+  async removeFavorite(favoriteId: string): Promise<ApiResponse<void>> {
+    return this.request(`/api/v1/favorites/${favoriteId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // 获取消息列表
+  async getMessages(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/v1/messages');
+  }
+
+  // 发送消息
+  async sendMessage(messageData: any): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify(messageData),
+    });
+  }
+
+  // 检查认证状态
+  isAuthenticated(): boolean {
+    const token = this.getAuthToken();
+    if (!token) return false;
+
+    try {
+      // 简单检查token是否过期（实际项目中应该验证签名）
+      const tokenParts = token.split('.');
+      if (tokenParts.length === 3) {
+        const payload = JSON.parse(atob(tokenParts[1]));
+        const exp = payload.exp * 1000; // 转换为毫秒
+        return Date.now() < exp;
+      }
+    } catch (error) {
+      console.warn('Failed to parse token:', error);
+    }
+
+    return false;
+  }
 }
 
-// 創建默認實例
-export const apiClient = new ApiClient();
+// 创建全局API客户端实例
+export const apiClient = new ApiClient(API_BASE_URL);
+
+export default apiClient;
