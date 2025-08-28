@@ -1,6 +1,6 @@
 // API客户端，用于处理所有API调用和JWT token管理
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080';
 
 export interface ApiResponse<T = any> {
   data?: T;
@@ -121,8 +121,29 @@ class ApiClient {
   }
 
   // 获取商品列表
-  async getListings(): Promise<ApiResponse<any[]>> {
-    return this.request('/api/v1/listings');
+  async getListings(params?: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    location?: string;
+  }): Promise<ApiResponse<{listings: any[], pagination: any}>> {
+    let url = '/api/v1/listings';
+    if (params) {
+      const searchParams = new URLSearchParams();
+      if (params.page) searchParams.append('page', params.page.toString());
+      if (params.limit) searchParams.append('limit', params.limit.toString());
+      if (params.category) searchParams.append('category', params.category);
+      if (params.location) searchParams.append('location', params.location);
+      
+      const queryString = searchParams.toString();
+      if (queryString) url += `?${queryString}`;
+    }
+    return this.request(url);
+  }
+
+  // 获取分类列表
+  async getCategories(): Promise<ApiResponse<string[]>> {
+    return this.request('/api/v1/categories');
   }
 
   // 获取商品详情

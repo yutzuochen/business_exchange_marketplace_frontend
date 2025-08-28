@@ -19,8 +19,12 @@ export default function ListingDetailPage() {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiClient.getListing(parseInt(id));
-        setListing(data);
+        const response = await apiClient.getListing(id);
+        if (response.error) {
+          setError(response.error);
+          return;
+        }
+        setListing(response.data.listing);
       } catch (err) {
         setError(err instanceof Error ? err.message : '載入失敗');
       } finally {

@@ -5,7 +5,6 @@ import { Listing } from '@/types/listing';
 import { apiClient } from '@/lib/api';
 import ListingCard from '@/components/ListingCard';
 import Navigation from '@/components/Navigation';
-import Link from 'next/link';
 
 export default function MarketPage() {
   const [listings, setListings] = useState<Listing[]>([]);
@@ -49,18 +48,35 @@ export default function MarketPage() {
         
         // 處理 listings 結果
         if (listingsResult.status === 'fulfilled') {
-          setListings(listingsResult.value.listings || []);
-          setPagination(listingsResult.value.pagination);
-          console.log('✅ Listings loaded:', listingsResult.value.listings?.length || 0);
-          console.log('📄 Pagination:', listingsResult.value.pagination);
+          const response = listingsResult.value;
+          const responseData = response.data || response;
+          
+          // 確保 responseData 有正確的結構
+          const listings = Array.isArray(responseData) ? responseData : ((responseData as any).listings || []);
+          setListings(listings);
+          
+          // 確保 pagination 有默認值
+          const paginationData = (responseData as any).pagination || {
+            page: currentPage,
+            limit: 20,
+            total: listings.length,
+            total_pages: Math.ceil(listings.length / 20)
+          };
+          setPagination(paginationData);
+          
+          console.log('✅ Listings loaded:', listings.length);
+          console.log('📄 Pagination:', paginationData);
         } else {
           console.error('❌ Listings failed:', listingsResult.reason);
         }
         
         // 處理 categories 結果
         if (categoriesResult.status === 'fulfilled') {
-          setCategories(categoriesResult.value || []);
-          console.log('✅ Categories loaded:', categoriesResult.value?.length || 0);
+          const response = categoriesResult.value;
+          const categoriesData = response.data || response || [];
+          const categories = Array.isArray(categoriesData) ? categoriesData : [];
+          setCategories(categories);
+          console.log('✅ Categories loaded:', categories.length);
         } else {
           console.error('❌ Categories failed:', categoriesResult.reason);
         }
@@ -74,7 +90,6 @@ export default function MarketPage() {
         console.error('💥 Unexpected error:', err);
         setError(err instanceof Error ? err.message : '載入失敗');
       } finally {
-        console.log('🏁 Setting loading to false');
         setLoading(false);
       }
     };
@@ -203,7 +218,7 @@ export default function MarketPage() {
         {/* 結果統計 */}
         <div className="mb-6">
           <p className="text-gray-600">
-            顯示第 {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} 個結果，共 {pagination.total} 個
+            顯示第 {((pagination?.page || 1) - 1) * (pagination?.limit || 20) + 1} - {Math.min((pagination?.page || 1) * (pagination?.limit || 20), pagination?.total || 0)} 個結果，共 {pagination?.total || 0} 個
             {selectedCategory !== 'all' && ` (${selectedCategory} 分類)`}
             {selectedCounty !== 'all' && ` (${selectedCounty})`}
           </p>
@@ -219,7 +234,7 @@ export default function MarketPage() {
             </div>
             
             {/* 分頁控制 */}
-            {pagination.total_pages > 1 && (
+            {(pagination?.total_pages || 0) > 1 && (
               <div className="mt-12 flex justify-center">
                 <div className="flex items-center space-x-2">
                   {/* 上一頁 */}
@@ -236,10 +251,10 @@ export default function MarketPage() {
                   </button>
                   
                   {/* 頁碼 */}
-                  {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                  {Array.from({ length: Math.min(5, pagination?.total_pages || 1) }, (_, i) => {
                     const startPage = Math.max(1, currentPage - 2);
                     const pageNum = startPage + i;
-                    if (pageNum > pagination.total_pages) return null;
+                    if (pageNum > (pagination?.total_pages || 1)) return null;
                     
                     return (
                       <button
@@ -259,9 +274,9 @@ export default function MarketPage() {
                   {/* 下一頁 */}
                   <button
                     onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === pagination.total_pages}
+                    disabled={currentPage === (pagination?.total_pages || 1)}
                     className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                      currentPage === pagination.total_pages
+                      currentPage === (pagination?.total_pages || 1)
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                     }`}
