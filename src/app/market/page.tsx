@@ -23,7 +23,8 @@ export default function MarketPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      console.log('🚀 Starting data fetch...');
+      console.log('🚀 Market page: Starting data fetch...');
+      console.log('🚀 Market page: Component mounted and useEffect triggered');
       setLoading(true);
       setError(null);
       

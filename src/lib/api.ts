@@ -15,29 +15,46 @@ class ApiClient {
     this.baseURL = baseURL;
   }
 
-  // 获取认证token
+  // 获取认证token (从cookie中获取)
   private getAuthToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('authToken');
+      // Try to get token from cookie first
+      const name = "authToken=";
+      const decodedCookie = decodeURIComponent(document.cookie);
+      const ca = decodedCookie.split(';');
+      for(let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) == ' ') {
+          c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+          return c.substring(name.length, c.length);
+        }
+      }
     }
     return null;
   }
 
-  // 设置认证token
+  // Cookie-based auth doesn't require manual token setting
   setAuthToken(token: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('authToken', token);
-    }
+    // No longer needed - cookies are set by the server
+    console.log('Token management now handled by server-side cookies');
   }
 
-  // 清除认证token
+  // 清除认证token (通过调用logout API)
   clearAuthToken(): void {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken');
       sessionStorage.removeItem('loginSuccess');
       sessionStorage.removeItem('userName');
       sessionStorage.removeItem('userEmail');
       sessionStorage.removeItem('userAvatar');
+      sessionStorage.removeItem('userId');
+      
+      // Call logout endpoint to clear cookie
+      fetch(`${this.baseURL}/api/v1/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      }).catch(err => console.warn('Logout request failed:', err));
     }
   }
 
@@ -63,6 +80,7 @@ class ApiClient {
       const response = await fetch(url, {
         ...options,
         headers,
+        credentials: 'include', // Essential for cookies to work
       });
 
       // 如果返回401，清除token并跳转到登录页
@@ -88,16 +106,15 @@ class ApiClient {
   }
 
   // 登录
-  async login(email: string, password: string): Promise<ApiResponse<{ token: string }>> {
-    const response = await this.request<{ token: string }>('/api/v1/auth/login', {
+  async login(email: string, password: string): Promise<ApiResponse<{ message: string; user_id: number }>> {
+    const response = await this.request<{ message: string; user_id: number }>('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
 
-    if (response.data?.token) {
-      this.setAuthToken(response.data.token);
-    }
-
+    // With cookie-based auth, the token is automatically set by the server
+    // No need to manually handle token storage
+    
     return response;
   }
 

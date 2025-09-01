@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Navigation from '@/components/Navigation';
 import { apiClient } from '@/lib/api';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -30,37 +32,39 @@ export default function LoginPage() {
       // 使用API客户端进行登录
       const response = await apiClient.login(formData.email, formData.password);
       
+      console.log('Login response:', response); // Debug log
+      
       if (response.error) {
         throw new Error(response.error);
       }
 
-      if (response.data?.token) {
-        // 解析JWT token获取用户信息
-        try {
-          const tokenParts = response.data.token.split('.');
-          if (tokenParts.length === 3) {
-            const payload = JSON.parse(atob(tokenParts[1]));
-            if (payload.email) {
-              sessionStorage.setItem('userEmail', payload.email);
-              sessionStorage.setItem('userName', payload.email.split('@')[0]);
-            }
-          }
-        } catch (parseError) {
-          console.warn('Failed to parse JWT token:', parseError);
-        }
-        
-        // 设置登录成功标志
+      console.log('Checking response data:', response.data);
+      console.log('Message check:', response.data?.message);
+      console.log('User ID check:', response.data?.user_id);
+      
+      if (response.data?.message === 'Login successful' && response.data?.user_id) {
+        console.log('Login successful, setting up redirect...'); // Debug log
+        // With cookie-based auth, we get user_id from the response
+        // Set user session information
+        sessionStorage.setItem('userId', response.data.user_id.toString());
+        sessionStorage.setItem('userEmail', formData.email);
+        sessionStorage.setItem('userName', formData.email.split('@')[0]);
         sessionStorage.setItem('loginSuccess', 'true');
         sessionStorage.setItem('userAvatar', ''); // No avatar for now
         
+        console.log('Setting showSuccess to true...'); // Debug log
         // 显示成功页面
         setShowSuccess(true);
         
+        console.log('Setting up redirect timeout...'); // Debug log
         // 2秒后跳转到市场页面
         setTimeout(() => {
-          window.location.href = '/market';
+          console.log('Executing redirect to /market...'); // Debug log
+          router.push('/market');
         }, 2000);
       } else {
+        console.log('Login response format error. Expected: {message: "Login successful", user_id: number}');
+        console.log('Actual response.data:', response.data);
         throw new Error('登录响应格式错误');
       }
       

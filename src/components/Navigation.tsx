@@ -11,40 +11,28 @@ export default function Navigation() {
   // Check login status on component mount
   useEffect(() => {
     // 使用API客户端检查认证状态
-    const checkAuthStatus = () => {
-      const authToken = localStorage.getItem('authToken');
-      const loginSuccess = sessionStorage.getItem('loginSuccess');
-      const userName = sessionStorage.getItem('userName');
-      const userAvatar = sessionStorage.getItem('userAvatar');
-      
-      if (authToken && (loginSuccess || userName)) {
-        setIsLoggedIn(true);
-        setUser({ 
-          name: userName || 'User', 
-          avatar: userAvatar || '' 
+    const checkAuthStatus = async () => {
+      try {
+        // Check if we have a valid token by making an API call
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/auth/me`, {
+          credentials: 'include', // Include cookies
         });
-      } else if (authToken) {
-        // 如果有token但没有用户信息，尝试解析token
-        try {
-          const tokenParts = authToken.split('.');
-          if (tokenParts.length === 3) {
-            const payload = JSON.parse(atob(tokenParts[1]));
-            if (payload.email) {
-              const username = payload.email.split('@')[0];
-              sessionStorage.setItem('userEmail', payload.email);
-              sessionStorage.setItem('userName', username);
-              setIsLoggedIn(true);
-              setUser({ 
-                name: username, 
-                avatar: '' 
-              });
-            }
-          }
-        } catch (parseError) {
-          console.warn('Failed to parse JWT token:', parseError);
-          // 如果token解析失败，清除无效token
-          apiClient.clearAuthToken();
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setIsLoggedIn(true);
+          setUser({ 
+            name: userData.data?.name || userData.data?.email?.split('@')[0] || 'User', 
+            avatar: userData.data?.avatar || '' 
+          });
+        } else {
+          setIsLoggedIn(false);
+          setUser({ name: 'User', avatar: '' });
         }
+      } catch (error) {
+        console.warn('Failed to check auth status:', error);
+        setIsLoggedIn(false);
+        setUser({ name: 'User', avatar: '' });
       }
     };
 
@@ -77,6 +65,22 @@ export default function Navigation() {
           
           {/* Right - Navigation Links */}
           <div className="flex items-center space-x-4">
+            {/* Market Link */}
+            <Link 
+              href="/market"
+              className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+            >
+              商機市場
+            </Link>
+            
+            {/* Auctions Link */}
+            <Link 
+              href="/auctions"
+              className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+            >
+              拍賣專區
+            </Link>
+
             {!isLoggedIn ? (
               // Login/Signup buttons when not logged in
               <>
