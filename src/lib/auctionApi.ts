@@ -1,6 +1,4 @@
 // 拍賣服務 API 客戶端
-import { api } from './api';
-import { getAuthToken } from './cookies';
 
 export interface Auction {
   auction_id: number;
@@ -68,7 +66,8 @@ export interface CreateAuctionRequest {
 }
 
 class AuctionApiService {
-  private baseURL = process.env.NEXT_PUBLIC_AUCTION_API_URL || 'http://127.0.0.1:8081';
+  // Use the auction service directly on port 8081
+  private baseURL = process.env.NEXT_PUBLIC_AUCTION_API_URL || 'http://localhost:8081';
 
   // 拍賣列表
   async getAuctions(params?: {
@@ -81,7 +80,9 @@ class AuctionApiService {
     if (params?.page) searchParams.append('page', params.page.toString());
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     
-    const response = await fetch(`${this.baseURL}/api/v1/auctions?${searchParams}`);
+    const response = await fetch(`${this.baseURL}/api/v1/auctions?${searchParams}`, {
+      credentials: 'include', // Include cookies for authentication
+    });
     if (!response.ok) throw new Error('Failed to fetch auctions');
     const data = await response.json();
     
@@ -95,7 +96,9 @@ class AuctionApiService {
 
   // 拍賣詳情
   async getAuction(id: number): Promise<Auction> {
-    const response = await fetch(`${this.baseURL}/api/v1/auctions/${id}`);
+    const response = await fetch(`${this.baseURL}/api/v1/auctions/${id}`, {
+      credentials: 'include', // Include cookies for authentication
+    });
     if (!response.ok) throw new Error('Failed to fetch auction');
     const data = await response.json();
     return data.data.auction; // Return only the auction object, not the wrapper
@@ -103,20 +106,12 @@ class AuctionApiService {
 
   // 創建拍賣
   async createAuction(auctionData: CreateAuctionRequest): Promise<Auction> {
-    const token = getAuthToken();
-    console.log('Debug: Token from cookies:', token ? `${token.slice(0, 20)}...` : 'null');
-    console.log('Debug: Token length:', token ? token.length : 0);
-    
-    if (!token) {
-      throw new Error('No authentication token found. Please login first.');
-    }
-    
     const response = await fetch(`${this.baseURL}/api/v1/auctions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
+      credentials: 'include', // Include cookies for authentication
       body: JSON.stringify(auctionData),
     });
     
@@ -127,12 +122,9 @@ class AuctionApiService {
 
   // 啟用拍賣
   async activateAuction(id: number): Promise<void> {
-    const token = getAuthToken();
-    const response = await fetch(`${this.baseURL}/api/v1/auctions/${id}:activate`, {
+    const response = await fetch(`${this.baseURL}/api/v1/auctions/${id}/activate`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      credentials: 'include', // Include cookies for authentication
     });
     
     if (!response.ok) throw new Error('Failed to activate auction');
@@ -140,13 +132,12 @@ class AuctionApiService {
 
   // 提交出價
   async placeBid(auctionId: number, bidData: BidRequest): Promise<BidResponse> {
-    const token = getAuthToken();
     const response = await fetch(`${this.baseURL}/api/v1/auctions/${auctionId}/bids`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
+      credentials: 'include', // Include cookies for authentication
       body: JSON.stringify(bidData),
     });
     
@@ -160,11 +151,8 @@ class AuctionApiService {
 
   // 獲取我的出價
   async getMyBids(auctionId: number): Promise<Bid[]> {
-    const token = getAuthToken();
     const response = await fetch(`${this.baseURL}/api/v1/auctions/${auctionId}/my-bids`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      credentials: 'include', // Include cookies for authentication
     });
     
     if (!response.ok) throw new Error('Failed to fetch my bids');
@@ -174,11 +162,8 @@ class AuctionApiService {
 
   // 獲取拍賣結果
   async getAuctionResults(auctionId: number): Promise<AuctionResults> {
-    const token = getAuthToken();
     const response = await fetch(`${this.baseURL}/api/v1/auctions/${auctionId}/results`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      credentials: 'include', // Include cookies for authentication
     });
     
     if (!response.ok) throw new Error('Failed to fetch auction results');
@@ -186,15 +171,16 @@ class AuctionApiService {
     return data.data;
   }
 
-  // WebSocket 連接
+  // WebSocket 連接 - HttpOnly cookies are automatically sent with WebSocket handshake
   createWebSocketConnection(auctionId: number): WebSocket {
-    const token = getAuthToken();
     const baseWsUrl = this.baseURL.replace('http', 'ws');
-    // Include token as query parameter since WebSocket doesn't support custom headers in browser
-    const wsUrl = `${baseWsUrl}/ws/auctions/${auctionId}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
-    const ws = new WebSocket(wsUrl);
+    // WebSocket will automatically include HttpOnly cookies during handshake
+    const wsUrl = `${baseWsUrl}/ws/auctions/${auctionId}`;
     
-    return ws;
+    console.log('🔗 WebSocket URL (cookies sent automatically):', wsUrl);
+    console.log('🍪 HttpOnly cookies will be sent automatically during handshake');
+    
+    return new WebSocket(wsUrl);
   }
 }
 

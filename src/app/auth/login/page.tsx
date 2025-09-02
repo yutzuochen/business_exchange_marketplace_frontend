@@ -33,6 +33,7 @@ export default function LoginPage() {
       const response = await apiClient.login(formData.email, formData.password);
       
       console.log('Login response:', response); // Debug log
+      console.log('Document cookies after login:', document.cookie); // Debug cookie check
       
       if (response.error) {
         throw new Error(response.error);
@@ -43,9 +44,9 @@ export default function LoginPage() {
       console.log('User ID check:', response.data?.user_id);
       
       if (response.data?.message === 'Login successful' && response.data?.user_id) {
-        console.log('Login successful, setting up redirect...'); // Debug log
-        // With cookie-based auth, we get user_id from the response
-        // Set user session information
+        console.log('Login successful! Backend has set HttpOnly cookie automatically.'); // Debug log
+        
+        // Store user session information (for UI purposes, not auth)
         sessionStorage.setItem('userId', response.data.user_id.toString());
         sessionStorage.setItem('userEmail', formData.email);
         sessionStorage.setItem('userName', formData.email.split('@')[0]);

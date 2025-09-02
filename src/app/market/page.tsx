@@ -20,6 +20,42 @@ export default function MarketPage() {
     total: 0,
     total_pages: 0
   });
+  
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userInfo, setUserInfo] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const authenticated = await apiClient.isAuthenticatedAsync();
+        console.log('🔐 Authentication status:', authenticated);
+        
+        if (authenticated) {
+          setIsAuthenticated(true);
+          // Fetch user info
+          const userResponse = await apiClient.getUserProfile();
+          if (userResponse.data) {
+            setUserInfo(userResponse.data);
+            console.log('👤 User info:', userResponse.data);
+          }
+        } else {
+          setIsAuthenticated(false);
+          setUserInfo(null);
+        }
+      } catch (error) {
+        console.warn('Auth check failed:', error);
+        setIsAuthenticated(false);
+        setUserInfo(null);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -144,6 +180,54 @@ export default function MarketPage() {
       <Navigation />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Member Welcome Section */}
+        {!authLoading && isAuthenticated && userInfo && (
+          <div className="mb-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">歡迎回來，{userInfo.email.split('@')[0]} 會員！</h2>
+                <p className="text-blue-100">您現在正以會員身份瀏覽市場</p>
+              </div>
+              <div className="text-right">
+                <div className="bg-white/20 rounded-lg px-4 py-2">
+                  <div className="text-sm text-blue-100">會員等級</div>
+                  <div className="font-bold">{userInfo.role === 'admin' ? '管理員' : '一般會員'}</div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-4">
+              <button className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors">
+                我的收藏
+              </button>
+              <button className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors">
+                交易記錄
+              </button>
+              <button className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors">
+                會員專區
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Guest User Notice */}
+        {!authLoading && !isAuthenticated && (
+          <div className="mb-8 bg-gray-100 border-l-4 border-blue-500 rounded-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">歡迎訪客！</h3>
+                <p className="text-gray-600">登入會員享有更多功能與優惠</p>
+              </div>
+              <div className="flex gap-3">
+                <a href="/auth/login" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                  登入
+                </a>
+                <a href="/auth/signup" className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                  註冊
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
         {/* 分類篩選 */}
         <div className="mb-6">
           <h3 className="text-lg font-medium text-gray-900 mb-3">分類篩選</h3>

@@ -12,25 +12,30 @@ export default function Navigation() {
   useEffect(() => {
     // 使用API客户端检查认证状态
     const checkAuthStatus = async () => {
+      console.log('🔍 Navigation: Checking authentication status...');
       try {
         // Check if we have a valid token by making an API call
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/auth/me`, {
           credentials: 'include', // Include cookies
         });
         
+        console.log('🔍 Navigation: Auth check response status:', response.status);
+        
         if (response.ok) {
           const userData = await response.json();
+          console.log('✅ Navigation: User authenticated:', userData);
           setIsLoggedIn(true);
           setUser({ 
             name: userData.data?.name || userData.data?.email?.split('@')[0] || 'User', 
             avatar: userData.data?.avatar || '' 
           });
         } else {
+          console.log('❌ Navigation: User not authenticated');
           setIsLoggedIn(false);
           setUser({ name: 'User', avatar: '' });
         }
       } catch (error) {
-        console.warn('Failed to check auth status:', error);
+        console.warn('❌ Navigation: Failed to check auth status:', error);
         setIsLoggedIn(false);
         setUser({ name: 'User', avatar: '' });
       }

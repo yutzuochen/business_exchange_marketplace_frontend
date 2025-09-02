@@ -1,6 +1,6 @@
 // API客户端，用于处理所有API调用和JWT token管理
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export interface ApiResponse<T = any> {
   data?: T;
@@ -15,23 +15,11 @@ class ApiClient {
     this.baseURL = baseURL;
   }
 
-  // 获取认证token (从cookie中获取)
+  // HttpOnly cookies cannot be read by JavaScript - this is intentional for security
+  // The cookie is automatically sent with requests, no need to manually read it
   private getAuthToken(): string | null {
-    if (typeof window !== 'undefined') {
-      // Try to get token from cookie first
-      const name = "authToken=";
-      const decodedCookie = decodeURIComponent(document.cookie);
-      const ca = decodedCookie.split(';');
-      for(let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) == ' ') {
-          c = c.substring(1);
-        }
-        if (c.indexOf(name) == 0) {
-          return c.substring(name.length, c.length);
-        }
-      }
-    }
+    // HttpOnly cookies are handled automatically by the browser
+    // We'll use API calls to check authentication status instead
     return null;
   }
 
@@ -107,15 +95,35 @@ class ApiClient {
 
   // 登录
   async login(email: string, password: string): Promise<ApiResponse<{ message: string; user_id: number }>> {
-    const response = await this.request<{ message: string; user_id: number }>('/api/v1/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-
-    // With cookie-based auth, the token is automatically set by the server
-    // No need to manually handle token storage
+    const url = `${this.baseURL}/api/v1/auth/login`;
+    console.log('🔐 Login request URL:', url);
     
-    return response;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include', // Critical for cookie handling
+      });
+
+      console.log('🔍 Login response status:', response.status);
+      console.log('🔍 Login response headers:', Array.from(response.headers.entries()));
+      console.log('🔍 Set-Cookie header:', response.headers.get('Set-Cookie'));
+      
+      const data = await response.json();
+      console.log('🔍 Login response data:', data);
+
+      if (!response.ok) {
+        return { error: data.error || `Request failed: ${response.status}` };
+      }
+
+      return { data };
+    } catch (error) {
+      console.error('Login request failed:', error);
+      return { error: 'Network request failed' };
+    }
   }
 
   // 注册
@@ -134,7 +142,26 @@ class ApiClient {
 
   // 获取用户资料
   async getUserProfile(): Promise<ApiResponse<any>> {
-    return this.request('/api/v1/user/profile');
+    // Use /auth/me endpoint which works with cookie authentication
+    try {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/me`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        return { error: `Request failed: ${response.status}` };
+      }
+
+      const data = await response.json();
+      return { data: data.data }; // Extract the nested data object
+    } catch (error) {
+      console.error('Get user profile failed:', error);
+      return { error: 'Network request failed' };
+    }
   }
 
   // 获取商品列表
@@ -224,23 +251,28 @@ class ApiClient {
     });
   }
 
-  // 检查认证状态
-  isAuthenticated(): boolean {
-    const token = this.getAuthToken();
-    if (!token) return false;
-
+  // 检查认证状态 - Use API call since we can't read HttpOnly cookies
+  async isAuthenticatedAsync(): Promise<boolean> {
     try {
-      // 简单检查token是否过期（实际项目中应该验证签名）
-      const tokenParts = token.split('.');
-      if (tokenParts.length === 3) {
-        const payload = JSON.parse(atob(tokenParts[1]));
-        const exp = payload.exp * 1000; // 转换为毫秒
-        return Date.now() < exp;
-      }
+      const response = await fetch(`${this.baseURL}/api/v1/auth/me`, {
+        method: 'GET',
+        credentials: 'include', // Send cookies
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      return response.ok; // 200 means authenticated, 401 means not authenticated
     } catch (error) {
-      console.warn('Failed to parse token:', error);
+      console.warn('Failed to check authentication:', error);
+      return false;
     }
+  }
 
+  // Synchronous version for backward compatibility (always returns false for HttpOnly)
+  isAuthenticated(): boolean {
+    // HttpOnly cookies can't be read by JavaScript
+    // Use isAuthenticatedAsync() for proper authentication checks
     return false;
   }
 }

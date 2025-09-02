@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AuctionWebSocketMessage, WebSocketStatus } from '@/types/auction';
-import { getAuthToken } from '@/lib/cookies';
+import { auctionApi } from '@/lib/auctionApi';
 
 interface UseWebSocketOptions {
   onMessage?: (message: AuctionWebSocketMessage) => void;
@@ -79,25 +79,15 @@ export function useWebSocket(auctionId: number | null, options: UseWebSocketOpti
     }
 
     try {
-      const token = getAuthToken();
-      if (!token) {
-        setError('No authentication token found');
-        onError?.('No authentication token found');
-        return;
-      }
-
       updateStatus(WebSocketStatus.CONNECTING);
-      const baseURL = process.env.NEXT_PUBLIC_AUCTION_API_URL || 'http://127.0.0.1:8081';
-      const wsUrl = `${baseURL.replace('http', 'ws')}/ws/auctions/${auctionId}?token=${encodeURIComponent(token)}`;
+      
+      // Create WebSocket connection directly (synchronous)
+      const ws = auctionApi.createWebSocketConnection(auctionId);
+      wsRef.current = ws;
       
       console.log('🔧 WebSocket Debug Info:');
-      console.log('  - baseURL:', baseURL);
-      console.log('  - wsUrl:', wsUrl);
       console.log('  - auctionId:', auctionId);
-      console.log('  - token preview:', token ? `${token.slice(0, 20)}...` : 'null');
-      
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+      console.log('  - WebSocket URL:', ws.url);
 
       ws.onopen = () => {
         updateStatus(WebSocketStatus.CONNECTED);

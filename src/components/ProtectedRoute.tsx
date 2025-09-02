@@ -18,19 +18,22 @@ export default function ProtectedRoute({
   const router = useRouter();
 
   useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        router.push(redirectTo);
-        return;
-      }
-
-      // 检查token是否有效
-      if (apiClient.isAuthenticated()) {
-        setIsAuthenticated(true);
-      } else {
-        // Token无效，清除并跳转
+    const checkAuth = async () => {
+      try {
+        // Use async authentication check for HttpOnly cookies
+        const authenticated = await apiClient.isAuthenticatedAsync();
+        
+        if (authenticated) {
+          setIsAuthenticated(true);
+        } else {
+          // Not authenticated, clear any session data and redirect
+          apiClient.clearAuthToken();
+          router.push(redirectTo);
+          return;
+        }
+      } catch (error) {
+        console.warn('Authentication check failed:', error);
+        // On error, clear session and redirect
         apiClient.clearAuthToken();
         router.push(redirectTo);
         return;
