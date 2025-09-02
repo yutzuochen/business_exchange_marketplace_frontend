@@ -6,6 +6,7 @@ interface UseWebSocketOptions {
   onMessage?: (message: AuctionWebSocketMessage) => void;
   onStatusChange?: (status: WebSocketStatus) => void;
   onBidAccepted?: (data: any) => void;
+  onPriceChanged?: (data: any) => void;
   onAuctionExtended?: (data: any) => void;
   onAuctionClosed?: (data: any) => void;
   onError?: (error: string) => void;
@@ -27,6 +28,7 @@ export function useWebSocket(auctionId: number | null, options: UseWebSocketOpti
     onMessage,
     onStatusChange,
     onBidAccepted,
+    onPriceChanged,
     onAuctionExtended,
     onAuctionClosed,
     onError,
@@ -50,6 +52,9 @@ export function useWebSocket(auctionId: number | null, options: UseWebSocketOpti
         case 'bid_accepted':
           onBidAccepted?.(message.data);
           break;
+        case 'price_changed':
+          onPriceChanged?.(message.data);
+          break;
         case 'extended':
           onAuctionExtended?.(message.data);
           break;
@@ -71,23 +76,41 @@ export function useWebSocket(auctionId: number | null, options: UseWebSocketOpti
       setError('Failed to parse message');
       onError?.('Failed to parse message');
     }
-  }, [onMessage, onBidAccepted, onAuctionExtended, onAuctionClosed, onError]);
+  }, [onMessage, onBidAccepted, onPriceChanged, onAuctionExtended, onAuctionClosed, onError]);
 
-  const connect = useCallback(() => {
-    if (!auctionId || wsRef.current?.readyState === WebSocket.CONNECTING) {
+  const connect = useCallback(async () => {
+    if (!auctionId) {
+      console.log('🚫 Cannot connect: no auctionId provided');
       return;
+    }
+    
+    if (wsRef.current?.readyState === WebSocket.CONNECTING) {
+      console.log('🔄 WebSocket already connecting...');
+      return;
+    }
+    
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('✅ WebSocket already connected');
+      return;
+    }
+    
+    // Clean up any existing connection
+    if (wsRef.current) {
+      console.log('🧹 Cleaning up existing WebSocket connection');
+      wsRef.current.close();
+      wsRef.current = null;
     }
 
     try {
       updateStatus(WebSocketStatus.CONNECTING);
       
-      // Create WebSocket connection directly (synchronous)
-      const ws = auctionApi.createWebSocketConnection(auctionId);
+      // Create WebSocket connection (now asynchronous)
+      const ws = await auctionApi.createWebSocketConnection(auctionId);
       wsRef.current = ws;
       
       console.log('🔧 WebSocket Debug Info:');
       console.log('  - auctionId:', auctionId);
-      console.log('  - WebSocket URL:', ws.url);
+      console.log('  - WebSocket authenticated with token');
 
       ws.onopen = () => {
         updateStatus(WebSocketStatus.CONNECTED);
@@ -99,14 +122,22 @@ export function useWebSocket(auctionId: number | null, options: UseWebSocketOpti
 
       ws.onclose = (event) => {
         updateStatus(WebSocketStatus.DISCONNECTED);
-        console.log('WebSocket disconnected:', event.code, event.reason);
+        console.log('🔌 WebSocket disconnected:', {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean,
+          auctionId,
+        });
         
-        if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
+        // Only reconnect for unexpected closures (not code 1000 = normal closure)
+        if (autoReconnect && event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current++;
+          console.log(`🔄 Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`);
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`);
             connect();
           }, reconnectInterval);
+        } else if (event.code === 1000) {
+          console.log('✅ WebSocket closed normally (code 1000)');
         }
       };
 
@@ -156,7 +187,7 @@ export function useWebSocket(auctionId: number | null, options: UseWebSocketOpti
     return () => {
       disconnect();
     };
-  }, [auctionId, connect, disconnect]);
+  }, [auctionId]); // 移除 connect, disconnect 依賴項以避免重複連接
 
   return {
     status,

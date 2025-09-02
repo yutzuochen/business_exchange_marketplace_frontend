@@ -196,6 +196,9 @@ export default function MarketPage() {
               </div>
             </div>
             <div className="mt-4 flex gap-4">
+              <a href="/auction_english" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors">
+                英式拍賣
+              </a>
               <button className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors">
                 我的收藏
               </button>

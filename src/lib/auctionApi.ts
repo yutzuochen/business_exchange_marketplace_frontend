@@ -1,60 +1,8 @@
 // 拍賣服務 API 客戶端
+import { Auction, Bid, BidRequest, BidResponse, AuctionResults } from '@/types/auction';
 
-export interface Auction {
-  auction_id: number;
-  listing_id: number;
-  seller_id: number;
-  auction_type: string;
-  status_code: string;
-  allowed_min_bid: number;
-  allowed_max_bid: number;
-  start_at: string;
-  end_at: string;
-  extended_until?: string;
-  extension_count: number;
-  is_anonymous: boolean;
-  soft_close_trigger_sec: number;
-  soft_close_extend_sec: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Bid {
-  bid_id: number;
-  auction_id: number;
-  bidder_id: number;
-  amount: number;
-  client_seq: number;
-  accepted: boolean;
-  reject_reason?: string;
-  created_at: string;
-}
-
-export interface BidRequest {
-  amount: number;
-  client_seq: number;
-}
-
-export interface BidResponse {
-  accepted: boolean;
-  reject_reason?: string;
-  server_time: string;
-  soft_close?: {
-    extended: boolean;
-    extended_until?: string;
-  };
-  event_id: number;
-}
-
-export interface AuctionResults {
-  top_bidders: Array<{
-    rank: number;
-    alias: string;
-    amount?: number;
-  }>;
-  total_participants: number;
-  winner_count: number;
-}
+// Re-export types from main types file
+export type { Auction, Bid, BidRequest, BidResponse, AuctionResults };
 
 export interface CreateAuctionRequest {
   listing_id: number;
@@ -79,11 +27,23 @@ class AuctionApiService {
     if (params?.status) searchParams.append('status', params.status);
     if (params?.page) searchParams.append('page', params.page.toString());
     if (params?.limit) searchParams.append('limit', params.limit.toString());
-    
+
+    // Debug: Log cookies being sent
+    console.log('🔍 Auction API: Cookies available:', document.cookie);
+    console.log('🔍 Auction API: Requesting:', `${this.baseURL}/api/v1/auctions?${searchParams}`);
+
     const response = await fetch(`${this.baseURL}/api/v1/auctions?${searchParams}`, {
       credentials: 'include', // Include cookies for authentication
     });
-    if (!response.ok) throw new Error('Failed to fetch auctions');
+
+    console.log('🔍 Auction API: Response status:', response.status);
+    console.log('🔍 Auction API: Response headers:', Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('🔍 Auction API: Error response:', errorText);
+      throw new Error('Failed to fetch auctions');
+    }
     const data = await response.json();
     
     // Transform backend response format {items: [], next_page_token: ""} 
@@ -101,7 +61,8 @@ class AuctionApiService {
     });
     if (!response.ok) throw new Error('Failed to fetch auction');
     const data = await response.json();
-    return data.data.auction; // Return only the auction object, not the wrapper
+    // Type assertion to ensure status_code is one of the allowed values
+    return data.data.auction as Auction;
   }
 
   // 創建拍賣
@@ -114,10 +75,10 @@ class AuctionApiService {
       credentials: 'include', // Include cookies for authentication
       body: JSON.stringify(auctionData),
     });
-    
+
     if (!response.ok) throw new Error('Failed to create auction');
     const data = await response.json();
-    return data.data;
+    return data.data as Auction;
   }
 
   // 啟用拍賣
@@ -171,16 +132,57 @@ class AuctionApiService {
     return data.data;
   }
 
-  // WebSocket 連接 - HttpOnly cookies are automatically sent with WebSocket handshake
-  createWebSocketConnection(auctionId: number): WebSocket {
-    const baseWsUrl = this.baseURL.replace('http', 'ws');
-    // WebSocket will automatically include HttpOnly cookies during handshake
-    const wsUrl = `${baseWsUrl}/ws/auctions/${auctionId}`;
+  // English auction: Buy it now
+  async buyItNow(auctionId: number): Promise<any> {
+    const response = await fetch(`${this.baseURL}/api/v1/auctions/${auctionId}/buy-now`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': crypto.randomUUID(),
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        client_seq: Date.now(),
+      }),
+    });
     
-    console.log('🔗 WebSocket URL (cookies sent automatically):', wsUrl);
-    console.log('🍪 HttpOnly cookies will be sent automatically during handshake');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to buy it now');
+    }
     
-    return new WebSocket(wsUrl);
+    return response.json();
+  }
+
+  // 獲取 WebSocket token
+  async getWebSocketToken(): Promise<{ token: string; expires_in: number }> {
+    const response = await fetch(`${this.baseURL}/api/v1/auth/ws-token`, {
+      credentials: 'include', // Include cookies for authentication
+    });
+    
+    if (!response.ok) throw new Error('Failed to fetch WebSocket token');
+    const data = await response.json();
+    return data.data;
+  }
+
+  // WebSocket 連接 - 使用 token 進行認證
+  async createWebSocketConnection(auctionId: number): Promise<WebSocket> {
+    try {
+      // 先獲取 WebSocket token
+      const { token } = await this.getWebSocketToken();
+      
+      const baseWsUrl = this.baseURL.replace('http', 'ws');
+      // 在 URL 查詢參數中添加 token
+      const wsUrl = `${baseWsUrl}/ws/auctions/${auctionId}?token=${token}`;
+      
+      console.log('🔗 WebSocket URL with token:', wsUrl.replace(token, 'TOKEN_HIDDEN'));
+      console.log('🎫 Using WebSocket token for authentication');
+      
+      return new WebSocket(wsUrl);
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
+      throw error;
+    }
   }
 }
 

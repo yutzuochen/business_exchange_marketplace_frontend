@@ -70,7 +70,7 @@ export default function DebugAuthPage() {
         }
       }
       
-      setTestResults(prev => ({
+      setTestResults((prev: any) => ({
         ...prev,
         backend: {
           status: response.status,
@@ -79,7 +79,7 @@ export default function DebugAuthPage() {
         }
       }));
     } catch (error) {
-      setTestResults(prev => ({
+      setTestResults((prev: any) => ({
         ...prev,
         backend: {
           error: error instanceof Error ? error.message : 'Unknown error'
@@ -105,7 +105,7 @@ export default function DebugAuthPage() {
         }
       }
       
-      setTestResults(prev => ({
+      setTestResults((prev: any) => ({
         ...prev,
         auction: {
           status: response.status,
@@ -114,7 +114,7 @@ export default function DebugAuthPage() {
         }
       }));
     } catch (error) {
-      setTestResults(prev => ({
+      setTestResults((prev: any) => ({
         ...prev,
         auction: {
           error: error instanceof Error ? error.message : 'Unknown error'
@@ -127,7 +127,7 @@ export default function DebugAuthPage() {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) {
-        setTestResults(prev => ({
+        setTestResults((prev: any) => ({
           ...prev,
           websocket: { error: 'No token available' }
         }));
@@ -137,7 +137,7 @@ export default function DebugAuthPage() {
       const ws = new WebSocket(`ws://localhost:8081/ws/auctions/1?token=${encodeURIComponent(token)}`);
       
       ws.onopen = () => {
-        setTestResults(prev => ({
+        setTestResults((prev: any) => ({
           ...prev,
           websocket: { status: 'Connected successfully' }
         }));
@@ -145,20 +145,20 @@ export default function DebugAuthPage() {
       };
       
       ws.onerror = (error) => {
-        setTestResults(prev => ({
+        setTestResults((prev: any) => ({
           ...prev,
           websocket: { error: 'WebSocket connection failed' }
         }));
       };
       
       ws.onclose = () => {
-        setTestResults(prev => ({
+        setTestResults((prev: any) => ({
           ...prev,
           websocket: { status: 'Connection closed' }
         }));
       };
     } catch (error) {
-      setTestResults(prev => ({
+      setTestResults((prev: any) => ({
         ...prev,
         websocket: {
           error: error instanceof Error ? error.message : 'Unknown error'

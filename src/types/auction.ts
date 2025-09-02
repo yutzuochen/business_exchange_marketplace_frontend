@@ -4,7 +4,7 @@ export interface Auction {
   auction_id: number;
   listing_id: number;
   seller_id: number;
-  auction_type: string;
+  auction_type: 'sealed' | 'english' | 'dutch';
   status_code: 'draft' | 'active' | 'extended' | 'ended' | 'cancelled';
   allowed_min_bid: number;
   allowed_max_bid: number;
@@ -17,6 +17,13 @@ export interface Auction {
   soft_close_extend_sec: number;
   created_at: string;
   updated_at: string;
+  // English auction specific fields
+  reserve_price?: number;
+  min_increment?: number;
+  buy_it_now?: number;
+  current_price?: number;
+  highest_bidder_id?: number;
+  reserve_met?: boolean;
 }
 
 export interface Bid {
@@ -28,10 +35,14 @@ export interface Bid {
   accepted: boolean;
   reject_reason?: string;
   created_at: string;
+  // English auction specific fields
+  max_proxy_amount?: number;
+  is_winning?: boolean;
+  is_visible?: boolean;
 }
 
 export interface AuctionWebSocketMessage {
-  type: 'hello' | 'state' | 'bid_accepted' | 'extended' | 'closed' | 'resume_ok' | 'error';
+  type: 'hello' | 'state' | 'bid_accepted' | 'extended' | 'closed' | 'resume_ok' | 'error' | 'price_changed' | 'reserve_met' | 'outbid' | 'buy_it_now' | 'leaderboard';
   data?: any;
   event_id?: number;
   server_time: string;
@@ -71,6 +82,23 @@ export enum WebSocketStatus {
   CONNECTED = 'connected',
   DISCONNECTED = 'disconnected',
   ERROR = 'error',
+}
+
+export interface BidRequest {
+  amount: number;
+  client_seq: number;
+  max_proxy_amount?: number; // English auction proxy bidding
+}
+
+export interface BidResponse {
+  accepted: boolean;
+  reject_reason?: string;
+  server_time: string;
+  soft_close?: {
+    extended: boolean;
+    extended_until?: string;
+  };
+  event_id: number;
 }
 
 // 拍賣狀態顏色映射

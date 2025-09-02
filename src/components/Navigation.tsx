@@ -70,22 +70,6 @@ export default function Navigation() {
           
           {/* Right - Navigation Links */}
           <div className="flex items-center space-x-4">
-            {/* Market Link */}
-            <Link 
-              href="/market"
-              className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
-            >
-              商機市場
-            </Link>
-            
-            {/* Auctions Link */}
-            <Link 
-              href="/auctions"
-              className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
-            >
-              拍賣專區
-            </Link>
-
             {!isLoggedIn ? (
               // Login/Signup buttons when not logged in
               <>
@@ -105,6 +89,14 @@ export default function Navigation() {
             ) : (
               // User menu when logged in
               <div className="flex items-center space-x-4">
+                {/* English Auction button */}
+                <Link 
+                  href="/auction_english"
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  英式拍賣
+                </Link>
+                
                 {/* Dashboard button */}
                 <Link 
                   href="/dashboard"
